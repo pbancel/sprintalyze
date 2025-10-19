@@ -1,0 +1,24 @@
+Changelog
+
+1.0.0
+----------------
+Initial release
+
+1.0.1
+----------------
+Style fixes
+
+1.0.2
+----------------
+Calendar added
+Inbox added
+UI Fixes
+
+1.0.2b
+----------------
+Bug Fixes
+
+1.0.4
+----------------
+2 Horizontal Layouts
+UI Fixes for inner pages
