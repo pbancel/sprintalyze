@@ -2,20 +2,25 @@
 
 namespace App\Services;
 
+use App\Models\JiraConnection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class JiraClient
 {
-    protected string $baseUrl;
-    protected string $email;
-    protected string $apiToken;
+    protected ?JiraConnection $connection = null;
+    protected ?string $accessToken = null;
+    protected ?string $cloudId = null;
 
-    public function __construct()
+    /**
+     * Set the Jira connection to use for API calls
+     */
+    public function setConnection(JiraConnection $connection): self
     {
-        $this->baseUrl = config('jira.base_url');
-        $this->email = config('jira.email');
-        $this->apiToken = config('jira.api_token');
+        $this->connection = $connection;
+        $this->accessToken = $connection->decrypted_access_token;
+        $this->cloudId = $connection->cloud_id;
+        return $this;
     }
 
     /**
@@ -23,12 +28,16 @@ class JiraClient
      */
     protected function client()
     {
-        return Http::withBasicAuth($this->email, $this->apiToken)
+        if (!$this->accessToken || !$this->cloudId) {
+            throw new \Exception('Jira connection not set. Call setConnection() first.');
+        }
+
+        return Http::withToken($this->accessToken)
             ->withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])
-            ->baseUrl($this->baseUrl);
+            ->baseUrl("https://api.atlassian.com/ex/jira/{$this->cloudId}");
     }
 
     /**
@@ -313,6 +322,74 @@ class JiraClient
             ];
         } catch (\Exception $e) {
             Log::error('Failed to fetch sprint issues: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null
+            ];
+        }
+    }
+
+    /**
+     * Get all users accessible in Jira
+     */
+    public function getUsers(int $startAt = 0, int $maxResults = 100): array
+    {
+        try {
+            $response = $this->client()->get('/rest/api/3/users/search', [
+                'startAt' => $startAt,
+                'maxResults' => $maxResults,
+            ]);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to fetch users',
+                'data' => null
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch Jira users: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null
+            ];
+        }
+    }
+
+    /**
+     * Search for users by query
+     */
+    public function searchUsers(string $query, int $maxResults = 50): array
+    {
+        try {
+            $response = $this->client()->get('/rest/api/3/user/search', [
+                'query' => $query,
+                'maxResults' => $maxResults,
+            ]);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to search users',
+                'data' => null
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to search Jira users: ' . $e->getMessage());
 
             return [
                 'success' => false,

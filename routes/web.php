@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\JiraController;
+use App\Http\Controllers\MonitoredUserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -29,6 +30,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/jira/search', [JiraController::class, 'searchIssues'])->name('jira.search');
     Route::get('/jira/board/{boardId}/sprints', [JiraController::class, 'getBoardSprints'])->name('jira.board.sprints');
     Route::get('/jira/sprint/{sprintId}/issues', [JiraController::class, 'getSprintIssues'])->name('jira.sprint.issues');
+
+    // Monitored Users routes
+    Route::get('/monitored-users', [MonitoredUserController::class, 'index'])->name('monitored-users.index');
+    Route::post('/monitored-users/fetch', [MonitoredUserController::class, 'fetchUsers'])->name('monitored-users.fetch');
+    Route::post('/monitored-users', [MonitoredUserController::class, 'store'])->name('monitored-users.store');
+    Route::delete('/monitored-users/{id}', [MonitoredUserController::class, 'destroy'])->name('monitored-users.destroy');
+    Route::patch('/monitored-users/{id}/toggle', [MonitoredUserController::class, 'toggleStatus'])->name('monitored-users.toggle');
 });
 
 require __DIR__.'/auth.php';

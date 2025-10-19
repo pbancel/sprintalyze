@@ -87,6 +87,8 @@
                                 <i class="material-icons">home</i></span><span>Dashboard</span></a></li>
                                 <li><a class="withripple" href="{{ route('jira.connect') }}"><span class="icon">
                                 <i class="material-icons">link</i></span><span>Jira Connect</span></a></li>
+                                <li><a class="withripple" href="{{ route('monitored-users.index') }}"><span class="icon">
+                                <i class="material-icons">people</i></span><span>Monitored Users</span></a></li>
                             </ul>
                         </nav>
                     </div>

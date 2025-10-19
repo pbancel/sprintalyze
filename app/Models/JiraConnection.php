@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Crypt;
 
 class JiraConnection extends Model
@@ -76,5 +77,13 @@ class JiraConnection extends Model
     public function needsRefresh(): bool
     {
         return $this->expires_at->subMinutes(5)->isPast();
+    }
+
+    /**
+     * Get monitored users for this connection
+     */
+    public function monitoredUsers(): HasMany
+    {
+        return $this->hasMany(MonitoredUser::class);
     }
 }
