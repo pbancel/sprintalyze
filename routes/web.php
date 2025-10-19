@@ -19,6 +19,7 @@ Route::middleware('auth')->group(function () {
 
     // Jira routes
     Route::get('/jira-connect', [JiraController::class, 'connect'])->name('jira.connect');
+    Route::get('/jira/callback', [JiraController::class, 'callback'])->name('jira.callback');
     Route::get('/jira/test-connection', [JiraController::class, 'testConnection'])->name('jira.test');
     Route::get('/jira/projects', [JiraController::class, 'getProjects'])->name('jira.projects');
     Route::get('/jira/project/{projectKey}', [JiraController::class, 'getProject'])->name('jira.project');

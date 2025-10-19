@@ -83,4 +83,38 @@ class JiraController extends Controller
 
         return response()->json($result);
     }
+
+    /**
+     * OAuth callback handler for Jira
+     *
+     * This method handles the OAuth 2.0 callback from Jira after user authorization.
+     *
+     * What should be done here:
+     * 1. Receive the authorization code from the query parameter
+     * 2. Exchange the authorization code for an access token
+     * 3. Store the access token and refresh token in the database (associated with the user)
+     * 4. Optionally: Fetch and store user's Jira site information (cloudId, site URL)
+     * 5. Redirect the user to a success page or back to jira-connect with success message
+     */
+    public function callback(Request $request)
+    {
+        // TODO: Implement OAuth 2.0 callback logic
+        //
+        // Expected query parameters:
+        // - code: The authorization code from Jira
+        // - state: CSRF protection token (should match what was sent in the authorization request)
+        //
+        // Steps to implement:
+        // 1. Validate the state parameter
+        // 2. Exchange authorization code for access token
+        // 3. Store tokens in database
+        // 4. Fetch accessible resources (Jira sites)
+        // 5. Store site information
+        // 6. Redirect user with success message
+
+        return view('jira-callback', [
+            'code' => $request->query('code'),
+            'state' => $request->query('state')
+        ]);
+    }
 }
