@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\JiraClient;
 use App\Services\JiraOAuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class JiraController extends Controller
 {
@@ -106,6 +109,7 @@ class JiraController extends Controller
 
     /**
      * OAuth callback handler for Jira
+     * Creates/finds user and auto-logins them
      */
     public function callback(Request $request)
     {
@@ -115,7 +119,7 @@ class JiraController extends Controller
 
         if (!$state || $state !== $sessionState) {
             Log::warning('Invalid OAuth state parameter');
-            return redirect()->route('jira.connect')
+            return redirect('/')
                 ->with('error', 'Invalid request. Please try again.');
         }
 
@@ -127,7 +131,7 @@ class JiraController extends Controller
 
         if (!$code) {
             Log::warning('No authorization code received');
-            return redirect()->route('jira.connect')
+            return redirect('/')
                 ->with('error', 'Authorization failed. No code received.');
         }
 
@@ -136,7 +140,7 @@ class JiraController extends Controller
 
         if (!$tokenData) {
             Log::error('Failed to exchange authorization code for token');
-            return redirect()->route('jira.connect')
+            return redirect('/')
                 ->with('error', 'Failed to obtain access token from Jira.');
         }
 
@@ -145,17 +149,36 @@ class JiraController extends Controller
 
         if (!$resources || empty($resources)) {
             Log::error('No accessible Jira resources found');
-            return redirect()->route('jira.connect')
+            return redirect('/')
                 ->with('error', 'No Jira sites found for your account.');
         }
 
-        // Store connection for each accessible site
-        $userId = Auth::id();
-        $connectionsCreated = 0;
+        // Get the first resource (primary Jira site)
+        $primaryResource = $resources[0];
 
+        // Get Jira user info
+        $jiraUser = $this->oauthService->getJiraUserInfo($tokenData['access_token'], $primaryResource['id']);
+
+        if (!$jiraUser || !isset($jiraUser['emailAddress'])) {
+            Log::error('Failed to get Jira user info');
+            return redirect('/')
+                ->with('error', 'Failed to retrieve your Jira user information.');
+        }
+
+        // Find or create Laravel user based on Jira email
+        $user = User::firstOrCreate(
+            ['email' => $jiraUser['emailAddress']],
+            [
+                'name' => $jiraUser['displayName'] ?? explode('@', $jiraUser['emailAddress'])[0],
+                'password' => Hash::make(Str::random(32)), // Random password, user will use Jira OAuth
+            ]
+        );
+
+        // Store Jira connections for this user
+        $connectionsCreated = 0;
         foreach ($resources as $resource) {
             try {
-                $this->oauthService->storeConnection($userId, $tokenData, $resource);
+                $this->oauthService->storeConnection($user->id, $tokenData, $resource);
                 $connectionsCreated++;
             } catch (\Exception $e) {
                 Log::error('Failed to store Jira connection', [
@@ -166,11 +189,20 @@ class JiraController extends Controller
         }
 
         if ($connectionsCreated === 0) {
-            return redirect()->route('jira.connect')
+            return redirect('/')
                 ->with('error', 'Failed to save Jira connection.');
         }
 
-        return redirect()->route('jira.connect')
-            ->with('success', "Successfully connected to {$connectionsCreated} Jira site(s)!");
+        // Log the user in
+        Auth::login($user, true);
+
+        Log::info('User authenticated via Jira OAuth', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'connections' => $connectionsCreated,
+        ]);
+
+        return redirect()->route('dashboard')
+            ->with('success', "Welcome! You've been logged in successfully.");
     }
 }

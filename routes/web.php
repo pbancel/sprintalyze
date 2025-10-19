@@ -8,6 +8,10 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Guest Jira OAuth routes (for login/registration)
+Route::get('/jira/authorize', [JiraController::class, 'authorize'])->name('jira.authorize');
+Route::get('/jira/callback', [JiraController::class, 'callback'])->name('jira.callback');
+
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -17,10 +21,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Jira routes
+    // Jira routes (authenticated)
     Route::get('/jira-connect', [JiraController::class, 'connect'])->name('jira.connect');
-    Route::get('/jira/authorize', [JiraController::class, 'authorize'])->name('jira.authorize');
-    Route::get('/jira/callback', [JiraController::class, 'callback'])->name('jira.callback');
     Route::get('/jira/test-connection', [JiraController::class, 'testConnection'])->name('jira.test');
     Route::get('/jira/projects', [JiraController::class, 'getProjects'])->name('jira.projects');
     Route::get('/jira/project/{projectKey}', [JiraController::class, 'getProject'])->name('jira.project');

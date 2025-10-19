@@ -83,6 +83,31 @@ class JiraOAuthService
     }
 
     /**
+     * Get Jira user information
+     */
+    public function getJiraUserInfo(string $accessToken, string $cloudId): ?array
+    {
+        try {
+            $response = Http::withToken($accessToken)
+                ->get("https://api.atlassian.com/ex/jira/{$cloudId}/rest/api/3/myself");
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::error('Failed to get Jira user info', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Exception getting Jira user info: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Refresh access token
      */
     public function refreshAccessToken(JiraConnection $connection): bool

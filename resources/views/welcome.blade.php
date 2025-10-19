@@ -27,6 +27,19 @@
                     <h2>Welcome to Sprintalyze</h2>
                 </div>
                 <div class="panel-body">
+                    <!-- Success/Error Messages -->
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            <strong>Success!</strong> {{ session('success') }}
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger">
+                            <strong>Error!</strong> {{ session('error') }}
+                        </div>
+                    @endif
+
                     <p class="text-center">A powerful sprint analytics and planning platform to help your team track and optimize performance.</p>
 
                     <div class="text-center mt-lg">
@@ -34,10 +47,16 @@
                             @auth
                                 <a href="{{ url('/dashboard') }}" class="btn btn-primary btn-raised">Go to Dashboard</a>
                             @else
-                                <a href="{{ route('login') }}" class="btn btn-primary btn-raised">Login</a>
-                                @if (Route::has('register'))
-                                    <a href="{{ route('register') }}" class="btn btn-default">Register</a>
-                                @endif
+                                <a href="{{ route('jira.authorize') }}" class="btn btn-success btn-raised btn-lg">
+                                    <i class="fa fa-jira"></i> Login with Jira
+                                </a>
+                                <div class="mt-md">
+                                    <p class="text-muted">Or use traditional login</p>
+                                    <a href="{{ route('login') }}" class="btn btn-primary btn-sm">Email Login</a>
+                                    @if (Route::has('register'))
+                                        <a href="{{ route('register') }}" class="btn btn-default btn-sm">Register</a>
+                                    @endif
+                                </div>
                             @endauth
                         @endif
                     </div>
