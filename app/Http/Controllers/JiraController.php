@@ -3,15 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Services\JiraClient;
+use App\Services\JiraOAuthService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class JiraController extends Controller
 {
     protected JiraClient $jiraClient;
+    protected JiraOAuthService $oauthService;
 
-    public function __construct(JiraClient $jiraClient)
+    public function __construct(JiraClient $jiraClient, JiraOAuthService $oauthService)
     {
         $this->jiraClient = $jiraClient;
+        $this->oauthService = $oauthService;
     }
 
     public function connect()
@@ -85,36 +90,87 @@ class JiraController extends Controller
     }
 
     /**
+     * Initiate OAuth authorization
+     */
+    public function authorize(Request $request)
+    {
+        $state = $this->oauthService->generateState();
+
+        // Store state in session for CSRF validation
+        $request->session()->put('jira_oauth_state', $state);
+
+        $authUrl = $this->oauthService->getAuthorizationUrl($state);
+
+        return redirect($authUrl);
+    }
+
+    /**
      * OAuth callback handler for Jira
-     *
-     * This method handles the OAuth 2.0 callback from Jira after user authorization.
-     *
-     * What should be done here:
-     * 1. Receive the authorization code from the query parameter
-     * 2. Exchange the authorization code for an access token
-     * 3. Store the access token and refresh token in the database (associated with the user)
-     * 4. Optionally: Fetch and store user's Jira site information (cloudId, site URL)
-     * 5. Redirect the user to a success page or back to jira-connect with success message
      */
     public function callback(Request $request)
     {
-        // TODO: Implement OAuth 2.0 callback logic
-        //
-        // Expected query parameters:
-        // - code: The authorization code from Jira
-        // - state: CSRF protection token (should match what was sent in the authorization request)
-        //
-        // Steps to implement:
-        // 1. Validate the state parameter
-        // 2. Exchange authorization code for access token
-        // 3. Store tokens in database
-        // 4. Fetch accessible resources (Jira sites)
-        // 5. Store site information
-        // 6. Redirect user with success message
+        // Validate state parameter (CSRF protection)
+        $state = $request->query('state');
+        $sessionState = $request->session()->get('jira_oauth_state');
 
-        return view('jira-callback', [
-            'code' => $request->query('code'),
-            'state' => $request->query('state')
-        ]);
+        if (!$state || $state !== $sessionState) {
+            Log::warning('Invalid OAuth state parameter');
+            return redirect()->route('jira.connect')
+                ->with('error', 'Invalid request. Please try again.');
+        }
+
+        // Clear the state from session
+        $request->session()->forget('jira_oauth_state');
+
+        // Get authorization code
+        $code = $request->query('code');
+
+        if (!$code) {
+            Log::warning('No authorization code received');
+            return redirect()->route('jira.connect')
+                ->with('error', 'Authorization failed. No code received.');
+        }
+
+        // Exchange code for access token
+        $tokenData = $this->oauthService->exchangeCodeForToken($code);
+
+        if (!$tokenData) {
+            Log::error('Failed to exchange authorization code for token');
+            return redirect()->route('jira.connect')
+                ->with('error', 'Failed to obtain access token from Jira.');
+        }
+
+        // Get accessible resources (Jira sites)
+        $resources = $this->oauthService->getAccessibleResources($tokenData['access_token']);
+
+        if (!$resources || empty($resources)) {
+            Log::error('No accessible Jira resources found');
+            return redirect()->route('jira.connect')
+                ->with('error', 'No Jira sites found for your account.');
+        }
+
+        // Store connection for each accessible site
+        $userId = Auth::id();
+        $connectionsCreated = 0;
+
+        foreach ($resources as $resource) {
+            try {
+                $this->oauthService->storeConnection($userId, $tokenData, $resource);
+                $connectionsCreated++;
+            } catch (\Exception $e) {
+                Log::error('Failed to store Jira connection', [
+                    'resource' => $resource,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($connectionsCreated === 0) {
+            return redirect()->route('jira.connect')
+                ->with('error', 'Failed to save Jira connection.');
+        }
+
+        return redirect()->route('jira.connect')
+            ->with('success', "Successfully connected to {$connectionsCreated} Jira site(s)!");
     }
 }

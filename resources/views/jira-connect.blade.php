@@ -111,10 +111,28 @@
                                         <h2>Jira Connection</h2>
                                     </div>
                                     <div class="panel-body">
+                                        <!-- Success/Error Messages -->
+                                        @if(session('success'))
+                                            <div class="alert alert-success">
+                                                <strong>Success!</strong> {{ session('success') }}
+                                            </div>
+                                        @endif
+
+                                        @if(session('error'))
+                                            <div class="alert alert-danger">
+                                                <strong>Error!</strong> {{ session('error') }}
+                                            </div>
+                                        @endif
+
                                         <p>Connection to your Jira account</p>
 
                                         <div class="mt-lg">
-                                            <button id="testConnection" class="btn btn-primary btn-raised">Test Connection</button>
+                                            <a href="{{ route('jira.authorize') }}" class="btn btn-success btn-raised">
+                                                <i class="fa fa-link"></i> Connect to Jira (OAuth)
+                                            </a>
+                                            <button id="testConnection" class="btn btn-primary btn-raised">
+                                                <i class="fa fa-check"></i> Test API Connection
+                                            </button>
                                         </div>
 
                                         <div id="connectionResult" class="mt-lg" style="display: none;">
