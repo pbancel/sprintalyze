@@ -24,12 +24,6 @@
                                 <span>Dashboard</span>
                             </a>
                         </li>
-                        <li class="{{ request()->routeIs('jira.connect') ? 'active' : '' }}">
-                            <a class="withripple" href="{{ route('jira.connect') }}">
-                                <span class="icon"><i class="material-icons">link</i></span>
-                                <span>Jira Connect</span>
-                            </a>
-                        </li>
                         <li class="{{ request()->routeIs('monitored-users.*') ? 'active' : '' }}">
                             <a class="withripple" href="{{ route('monitored-users.index') }}">
                                 <span class="icon"><i class="material-icons">people</i></span>

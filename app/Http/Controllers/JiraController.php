@@ -22,11 +22,6 @@ class JiraController extends Controller
         $this->oauthService = $oauthService;
     }
 
-    public function connect()
-    {
-        return view('jira-connect');
-    }
-
     /**
      * Test the Jira connection
      */
