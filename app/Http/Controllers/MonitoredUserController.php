@@ -177,15 +177,27 @@ class MonitoredUserController extends Controller
     {
         $connectionId = $request->input('connection_id');
 
-        // Verify the connection belongs to the authenticated user
-        $connection = JiraConnection::where('user_id', Auth::id())
-            ->where('id', $connectionId)
-            ->firstOrFail();
+        try {
+            // Verify the connection belongs to the authenticated user
+            $connection = JiraConnection::where('user_id', Auth::id())
+                ->where('id', $connectionId)
+                ->firstOrFail();
 
-        $this->jiraClient->setConnection($connection);
+            // Set connection (this will automatically refresh token if needed)
+            $this->jiraClient->setConnection($connection);
 
-        // Fetch users from Jira
-        $result = $this->jiraClient->getUsers();
+            // Fetch users from Jira
+            $result = $this->jiraClient->getUsers();
+        } catch (\Exception $e) {
+            Log::error('Error in datatable endpoint: ' . $e->getMessage());
+            return response()->json([
+                'draw' => intval($request->input('draw', 0)),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Failed to load users: ' . $e->getMessage()
+            ]);
+        }
 
         if (!$result['success']) {
             return response()->json([
@@ -306,13 +318,24 @@ class MonitoredUserController extends Controller
     {
         $connectionId = $request->input('connection_id');
 
-        // Verify the connection belongs to the authenticated user
-        $connection = JiraConnection::where('user_id', Auth::id())
-            ->where('id', $connectionId)
-            ->firstOrFail();
+        try {
+            // Verify the connection belongs to the authenticated user
+            $connection = JiraConnection::where('user_id', Auth::id())
+                ->where('id', $connectionId)
+                ->firstOrFail();
 
-        // Build query for monitored users
-        $query = MonitoredUser::where('jira_connection_id', $connectionId);
+            // Build query for monitored users
+            $query = MonitoredUser::where('jira_connection_id', $connectionId);
+        } catch (\Exception $e) {
+            Log::error('Error in monitored datatable endpoint: ' . $e->getMessage());
+            return response()->json([
+                'draw' => intval($request->input('draw', 0)),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Failed to load monitored users: ' . $e->getMessage()
+            ]);
+        }
 
         // Apply search filter if provided
         $searchValue = $request->input('search.value', '');

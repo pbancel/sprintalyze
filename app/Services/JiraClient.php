@@ -11,6 +11,12 @@ class JiraClient
     protected ?JiraConnection $connection = null;
     protected ?string $accessToken = null;
     protected ?string $cloudId = null;
+    protected ?JiraOAuthService $oauthService = null;
+
+    public function __construct(JiraOAuthService $oauthService)
+    {
+        $this->oauthService = $oauthService;
+    }
 
     /**
      * Set the Jira connection to use for API calls
@@ -18,6 +24,21 @@ class JiraClient
     public function setConnection(JiraConnection $connection): self
     {
         $this->connection = $connection;
+
+        // Check if token needs refresh and refresh it
+        if ($connection->needsRefresh()) {
+            Log::info('Access token needs refresh, refreshing...', ['connection_id' => $connection->id]);
+
+            if ($this->oauthService->refreshAccessToken($connection)) {
+                // Reload the connection to get the fresh token
+                $connection->refresh();
+                Log::info('Access token refreshed successfully', ['connection_id' => $connection->id]);
+            } else {
+                Log::error('Failed to refresh access token', ['connection_id' => $connection->id]);
+                throw new \Exception('Failed to refresh Jira access token. Please reconnect your Jira account.');
+            }
+        }
+
         $this->accessToken = $connection->decrypted_access_token;
         $this->cloudId = $connection->cloud_id;
         return $this;
