@@ -10,7 +10,6 @@ class MonitoredUser extends Model
     protected $fillable = [
         'jira_connection_id',
         'jira_account_id',
-        'email',
         'display_name',
         'avatar_url',
         'is_active',

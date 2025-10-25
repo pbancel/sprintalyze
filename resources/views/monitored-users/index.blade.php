@@ -240,7 +240,6 @@
                     connection_id: connectionId,
                     jira_account_id: btn.data('account-id'),
                     display_name: btn.data('display-name'),
-                    email: btn.data('email'),
                     avatar_url: btn.data('avatar-url')
                 },
                 success: function(response) {
@@ -248,10 +247,30 @@
                         // Reload both datatables
                         monitoredUsersTable.ajax.reload();
                         availableUsersTable.ajax.reload();
+                    } else {
+                        alert('Failed to add user: ' + (response.message || 'Unknown error'));
+                        btn.prop('disabled', false).html(originalHtml);
                     }
                 },
-                error: function() {
-                    alert('Failed to add user. Please try again.');
+                error: function(xhr, status, error) {
+                    let errorMessage = 'Failed to add user. Please try again.';
+
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        // Laravel validation errors
+                        errorMessage = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                    } else if (xhr.responseText) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMessage = response.message || errorMessage;
+                        } catch(e) {
+                            // Not JSON, use default message
+                        }
+                    }
+
+                    console.error('Add user error:', xhr.responseText);
+                    alert(errorMessage);
                     btn.prop('disabled', false).html(originalHtml);
                 }
             });

@@ -95,40 +95,56 @@ class MonitoredUserController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'connection_id' => 'required|exists:jira_connections,id',
-            'jira_account_id' => 'required|string',
-            'email' => 'nullable|email',
-            'display_name' => 'required|string',
-            'avatar_url' => 'nullable|url',
-        ]);
-
-        // Verify the connection belongs to the authenticated user
-        $connection = JiraConnection::where('user_id', Auth::id())
-            ->where('id', $request->connection_id)
-            ->firstOrFail();
+        Log::info('Store request received', ['data' => $request->all()]);
 
         try {
+            $request->validate([
+                'connection_id' => 'required|exists:jira_connections,id',
+                'jira_account_id' => 'required|string',
+                'display_name' => 'required|string',
+                'avatar_url' => 'nullable|string',
+            ]);
+
+            // Verify the connection belongs to the authenticated user
+            $connection = JiraConnection::where('user_id', Auth::id())
+                ->where('id', $request->connection_id)
+                ->firstOrFail();
+
+            Log::info('Creating monitored user', [
+                'connection_id' => $connection->id,
+                'jira_account_id' => $request->jira_account_id,
+            ]);
+
             $monitoredUser = MonitoredUser::create([
                 'jira_connection_id' => $connection->id,
                 'jira_account_id' => $request->jira_account_id,
-                'email' => $request->email,
                 'display_name' => $request->display_name,
                 'avatar_url' => $request->avatar_url,
                 'is_active' => true,
             ]);
+
+            Log::info('Monitored user created successfully', ['user_id' => $monitoredUser->id]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'User added to monitoring successfully',
                 'user' => $monitoredUser,
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed: ' . json_encode($e->errors()));
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
-            Log::error('Failed to add monitored user: ' . $e->getMessage());
+            Log::error('Failed to add monitored user: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to add user to monitoring',
+                'message' => 'Failed to add user to monitoring: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -266,16 +282,14 @@ class MonitoredUserController extends Controller
         foreach ($paginatedUsers as $user) {
             $avatarUrl = $user['avatarUrls']['48x48'] ?? $user['avatarUrls']['32x32'] ?? '';
             $displayName = htmlspecialchars($user['displayName'] ?? 'Unknown');
-            $email = htmlspecialchars($user['emailAddress'] ?? 'N/A');
             $accountId = htmlspecialchars($user['accountId']);
             $isActive = $user['active'] ?? true;
 
-            // Format full name with email and avatar
+            // Format full name with avatar
             $fullName = '<div class="user-info-cell">' .
                        ($avatarUrl ? '<img src="' . $avatarUrl . '" class="user-avatar-small" alt="' . $displayName . '">' : '') .
                        '<div class="user-details-cell">' .
-                       '<strong>' . $displayName . '</strong><br>' .
-                       '<small class="text-muted">' . $email . '</small>' .
+                       '<strong>' . $displayName . '</strong>' .
                        '</div></div>';
 
             // Status badge
@@ -283,13 +297,11 @@ class MonitoredUserController extends Controller
                 ? '<span class="badge-status badge-active">Active</span>'
                 : '<span class="badge-status badge-inactive">Inactive</span>';
 
-            // Add button (inactive for now)
+            // Add button
             $actionButton = '<button class="btn btn-sm btn-success add-user-btn" ' .
                           'data-account-id="' . $accountId . '" ' .
                           'data-display-name="' . $displayName . '" ' .
-                          'data-email="' . $email . '" ' .
-                          'data-avatar-url="' . $avatarUrl . '" ' .
-                          'disabled>' .
+                          'data-avatar-url="' . $avatarUrl . '">' .
                           '<i class="fa fa-plus"></i> Add' .
                           '</button>';
 
@@ -340,10 +352,7 @@ class MonitoredUserController extends Controller
         // Apply search filter if provided
         $searchValue = $request->input('search.value', '');
         if (!empty($searchValue)) {
-            $query->where(function ($q) use ($searchValue) {
-                $q->where('display_name', 'LIKE', '%' . $searchValue . '%')
-                  ->orWhere('email', 'LIKE', '%' . $searchValue . '%');
-            });
+            $query->where('display_name', 'LIKE', '%' . $searchValue . '%');
         }
 
         // Get total and filtered counts
@@ -383,16 +392,14 @@ class MonitoredUserController extends Controller
         foreach ($monitoredUsers as $user) {
             $avatarUrl = $user->avatar_url ?? '';
             $displayName = htmlspecialchars($user->display_name);
-            $email = htmlspecialchars($user->email ?? 'N/A');
             $userId = $user->id;
             $isActive = $user->is_active;
 
-            // Format full name with email and avatar
+            // Format full name with avatar
             $fullName = '<div class="user-info-cell">' .
                        ($avatarUrl ? '<img src="' . $avatarUrl . '" class="user-avatar-small" alt="' . $displayName . '">' : '') .
                        '<div class="user-details-cell">' .
-                       '<strong>' . $displayName . '</strong><br>' .
-                       '<small class="text-muted">' . $email . '</small>' .
+                       '<strong>' . $displayName . '</strong>' .
                        '</div></div>';
 
             // Status badge with toggle button
