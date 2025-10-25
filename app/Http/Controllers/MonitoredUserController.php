@@ -172,4 +172,128 @@ class MonitoredUserController extends Controller
             'is_active' => $monitoredUser->is_active,
         ]);
     }
+
+    /**
+     * DataTable endpoint for available Jira users
+     */
+    public function datatable(Request $request)
+    {
+        $connectionId = $request->input('connection_id');
+
+        // Verify the connection belongs to the authenticated user
+        $connection = JiraConnection::where('user_id', Auth::id())
+            ->where('id', $connectionId)
+            ->firstOrFail();
+
+        $this->jiraClient->setConnection($connection);
+
+        // Fetch users from Jira
+        $result = $this->jiraClient->getUsers();
+
+        if (!$result['success']) {
+            return response()->json([
+                'draw' => intval($request->input('draw', 0)),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => $result['message'] ?? 'Failed to fetch users from Jira'
+            ]);
+        }
+
+        // Get monitored account IDs to filter them out
+        $monitoredAccountIds = MonitoredUser::where('jira_connection_id', $connectionId)
+            ->pluck('jira_account_id')
+            ->toArray();
+
+        // Filter and transform users
+        $users = collect($result['data'])
+            ->filter(function ($user) use ($monitoredAccountIds) {
+                // Only show active users that are not already monitored
+                return ($user['active'] ?? true) && !in_array($user['accountId'], $monitoredAccountIds);
+            })
+            ->values();
+
+        // Apply search filter if provided
+        $searchValue = $request->input('search.value', '');
+        if (!empty($searchValue)) {
+            $users = $users->filter(function ($user) use ($searchValue) {
+                $searchLower = strtolower($searchValue);
+                return str_contains(strtolower($user['displayName'] ?? ''), $searchLower) ||
+                       str_contains(strtolower($user['emailAddress'] ?? ''), $searchLower);
+            })->values();
+        }
+
+        $totalRecords = $users->count();
+
+        // Apply sorting
+        if ($request->has('order')) {
+            $orderColumnIndex = $request->input('order.0.column', 0);
+            $orderDir = $request->input('order.0.dir', 'asc');
+
+            // Map column indexes to data fields
+            $columnMap = [
+                0 => 'created',      // Creation date (we'll use a placeholder for now)
+                1 => 'displayName',  // Full name
+                2 => null            // Action column (not sortable)
+            ];
+
+            if (isset($columnMap[$orderColumnIndex]) && $columnMap[$orderColumnIndex] !== null) {
+                $sortField = $columnMap[$orderColumnIndex];
+                $users = $orderDir === 'asc'
+                    ? $users->sortBy($sortField)->values()
+                    : $users->sortByDesc($sortField)->values();
+            }
+        }
+
+        // Apply pagination
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 10);
+        $paginatedUsers = $users->slice($start, $length)->values();
+
+        // Transform data for DataTable
+        $data = [];
+        foreach ($paginatedUsers as $user) {
+            $avatarUrl = $user['avatarUrls']['48x48'] ?? $user['avatarUrls']['32x32'] ?? '';
+            $displayName = htmlspecialchars($user['displayName'] ?? 'Unknown');
+            $email = htmlspecialchars($user['emailAddress'] ?? 'N/A');
+            $accountId = htmlspecialchars($user['accountId']);
+
+            // Creation date placeholder (Jira API doesn't provide this for users)
+            $createdDate = 'N/A';
+
+            // Format full name with email
+            $fullName = '<div class="user-info-cell">' .
+                       ($avatarUrl ? '<img src="' . $avatarUrl . '" class="user-avatar-small" alt="' . $displayName . '">' : '') .
+                       '<div class="user-details-cell">' .
+                       '<strong>' . $displayName . '</strong><br>' .
+                       '<small class="text-muted">' . $email . '</small>' .
+                       '</div></div>';
+
+            // Add button (inactive for now)
+            $actionButton = '<button class="btn btn-sm btn-success add-user-btn" ' .
+                          'data-account-id="' . $accountId . '" ' .
+                          'data-display-name="' . $displayName . '" ' .
+                          'data-email="' . $email . '" ' .
+                          'data-avatar-url="' . $avatarUrl . '" ' .
+                          'disabled>' .
+                          '<i class="fa fa-plus"></i> Add' .
+                          '</button>';
+
+            $row = [
+                $createdDate,
+                $fullName,
+                $actionButton
+            ];
+
+            $data[] = $row;
+        }
+
+        // Return standard DataTable JSON response
+        return response()->json([
+            'draw' => intval($request->input('draw', 0)),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalRecords, // Same as total since filtering is done in memory
+            'data' => $data
+        ]);
+    }
 }

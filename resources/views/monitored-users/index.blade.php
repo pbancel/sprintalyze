@@ -67,7 +67,25 @@
             background-color: #9e9e9e;
             color: white;
         }
+        /* DataTable specific styles */
+        .user-info-cell {
+            display: flex;
+            align-items: center;
+        }
+        .user-avatar-small {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .user-details-cell {
+            display: flex;
+            flex-direction: column;
+        }
     </style>
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="{{ asset('template/assets/plugins/datatables/dataTables.bootstrap.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('template/assets/plugins/datatables/dataTables.css') }}">
     @endpush
 
     <ol class="breadcrumb">
@@ -139,22 +157,26 @@
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h2>Available Jira Users</h2>
+                        <div class="panel-ctrls">
+                            <!-- DataTable controls will be inserted here -->
+                        </div>
                     </div>
                     <div class="panel-body">
-                        <div class="search-box">
-                            <div class="input-group">
-                                <input type="text" id="user-search" class="form-control" placeholder="Search users...">
-                                <span class="input-group-btn">
-                                    <button class="btn btn-primary" id="search-btn">
-                                        <i class="fa fa-search"></i> Search
-                                    </button>
-                                </span>
-                            </div>
-                        </div>
-
-                        <div id="available-users-list">
-                            <p class="text-muted">Click "Search" to load available users from Jira.</p>
-                        </div>
+                        <table id="available-users-table" class="table table-striped table-bordered" cellspacing="0" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Creation Date</th>
+                                    <th>Full Name</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data loaded dynamically via DataTables -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="panel-footer">
+                        <!-- Pagination will be inserted here -->
                     </div>
                 </div>
             </div>
@@ -162,98 +184,40 @@
     </div>
 
     @push('scripts')
+    <!-- DataTables JS -->
+    <script type="text/javascript" src="{{ asset('template/assets/plugins/datatables/jquery.dataTables.min.js') }}"></script>
+    <script type="text/javascript" src="{{ asset('template/assets/plugins/datatables/dataTables.bootstrap.js') }}"></script>
+    <script type="text/javascript" src="{{ asset('template/assets/js/datatable-common.js') }}"></script>
+
     <script>
     $(document).ready(function() {
         const connectionId = {{ $activeConnection->id }};
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-        // Load users from Jira
-        function loadUsers(query = '') {
-            $('#available-users-list').html('<div class="loading"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading users from Jira...</p></div>');
-
-            $.ajax({
-                url: '{{ route("monitored-users.fetch") }}',
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                data: {
-                    connection_id: connectionId,
-                    query: query
-                },
-                success: function(response) {
-                    if (response.success) {
-                        displayUsers(response.users);
-                    } else {
-                        $('#available-users-list').html('<div class="alert alert-danger">' + response.message + '</div>');
-                    }
-                },
-                error: function(xhr) {
-                    $('#available-users-list').html('<div class="alert alert-danger">Failed to load users. Please try again.</div>');
+        // Initialize DataTable for available users
+        var availableUsersTable = makeTable('#available-users-table', {
+            'language': {
+                'lengthMenu': '_MENU_'
+            },
+            'processing': true,
+            'serverSide': true,
+            'stateSave': false,
+            'columnDefs': [
+                { orderable: false, targets: [0, 2] }, // Creation date and Action columns not sortable
+                { orderable: true, targets: [1] }       // Full name column sortable
+            ],
+            'order': [[1, 'asc']], // Sort by full name by default
+            'ajax': {
+                url: datatableUrl('/available-users.json'),
+                dataSrc: 'data',
+                data: function (d) {
+                    d.connection_id = connectionId;
                 }
-            });
-        }
-
-        // Display users in the available list
-        function displayUsers(users) {
-            if (users.length === 0) {
-                $('#available-users-list').html('<p class="text-muted">No users found.</p>');
-                return;
-            }
-
-            let html = '';
-            users.forEach(function(user) {
-                if (!user.isMonitored) {
-                    const avatarUrl = user.avatarUrls && user.avatarUrls['48x48']
-                        ? user.avatarUrls['48x48']
-                        : '{{ asset("template/assets/demo/avatar/avatar_15.png") }}';
-
-                    html += `
-                        <div class="user-card">
-                            <div class="user-info">
-                                <img src="${avatarUrl}" alt="${user.displayName}" class="user-avatar">
-                                <div class="user-details">
-                                    <h4>${user.displayName}</h4>
-                                    <p>${user.emailAddress || 'No email'}</p>
-                                </div>
-                            </div>
-                            <div class="user-actions">
-                                <button class="btn btn-sm btn-success add-user"
-                                    data-account-id="${user.accountId}"
-                                    data-display-name="${user.displayName}"
-                                    data-email="${user.emailAddress || ''}"
-                                    data-avatar="${avatarUrl}">
-                                    <i class="fa fa-plus"></i> Monitor
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            });
-
-            if (html === '') {
-                html = '<p class="text-muted">All available users are already being monitored.</p>';
-            }
-
-            $('#available-users-list').html(html);
-        }
-
-        // Search button click
-        $('#search-btn').on('click', function() {
-            const query = $('#user-search').val();
-            loadUsers(query);
-        });
-
-        // Search on Enter key
-        $('#user-search').on('keypress', function(e) {
-            if (e.which === 13) {
-                const query = $(this).val();
-                loadUsers(query);
             }
         });
 
-        // Add user to monitoring
-        $(document).on('click', '.add-user', function() {
+        // Add user to monitoring (using event delegation for dynamically created buttons)
+        $(document).on('click', '.add-user-btn', function() {
             const btn = $(this);
             const originalHtml = btn.html();
             btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
@@ -269,7 +233,7 @@
                     jira_account_id: btn.data('account-id'),
                     display_name: btn.data('display-name'),
                     email: btn.data('email'),
-                    avatar_url: btn.data('avatar')
+                    avatar_url: btn.data('avatar-url')
                 },
                 success: function(response) {
                     if (response.success) {

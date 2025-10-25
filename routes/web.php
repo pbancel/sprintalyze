@@ -36,6 +36,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/monitored-users', [MonitoredUserController::class, 'store'])->name('monitored-users.store');
     Route::delete('/monitored-users/{id}', [MonitoredUserController::class, 'destroy'])->name('monitored-users.destroy');
     Route::patch('/monitored-users/{id}/toggle', [MonitoredUserController::class, 'toggleStatus'])->name('monitored-users.toggle');
+
+    // DataTable routes
+    Route::get('/datatable/available-users.json', [MonitoredUserController::class, 'datatable'])->name('monitored-users.datatable');
 });
 
 require __DIR__.'/auth.php';
