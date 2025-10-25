@@ -232,8 +232,8 @@ class MonitoredUserController extends Controller
 
             // Map column indexes to data fields
             $columnMap = [
-                0 => 'created',      // Creation date (we'll use a placeholder for now)
-                1 => 'displayName',  // Full name
+                0 => 'displayName',  // Full name
+                1 => null,           // Status column (not sortable)
                 2 => null            // Action column (not sortable)
             ];
 
@@ -257,17 +257,20 @@ class MonitoredUserController extends Controller
             $displayName = htmlspecialchars($user['displayName'] ?? 'Unknown');
             $email = htmlspecialchars($user['emailAddress'] ?? 'N/A');
             $accountId = htmlspecialchars($user['accountId']);
+            $isActive = $user['active'] ?? true;
 
-            // Creation date placeholder (Jira API doesn't provide this for users)
-            $createdDate = 'N/A';
-
-            // Format full name with email
+            // Format full name with email and avatar
             $fullName = '<div class="user-info-cell">' .
                        ($avatarUrl ? '<img src="' . $avatarUrl . '" class="user-avatar-small" alt="' . $displayName . '">' : '') .
                        '<div class="user-details-cell">' .
                        '<strong>' . $displayName . '</strong><br>' .
                        '<small class="text-muted">' . $email . '</small>' .
                        '</div></div>';
+
+            // Status badge
+            $statusBadge = $isActive
+                ? '<span class="badge-status badge-active">Active</span>'
+                : '<span class="badge-status badge-inactive">Inactive</span>';
 
             // Add button (inactive for now)
             $actionButton = '<button class="btn btn-sm btn-success add-user-btn" ' .
@@ -280,8 +283,8 @@ class MonitoredUserController extends Controller
                           '</button>';
 
             $row = [
-                $createdDate,
                 $fullName,
+                $statusBadge,
                 $actionButton
             ];
 

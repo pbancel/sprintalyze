@@ -165,8 +165,8 @@
                         <table id="available-users-table" class="table table-striped table-bordered" cellspacing="0" width="100%">
                             <thead>
                                 <tr>
-                                    <th>Creation Date</th>
                                     <th>Full Name</th>
+                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -203,10 +203,10 @@
             'serverSide': true,
             'stateSave': false,
             'columnDefs': [
-                { orderable: false, targets: [0, 2] }, // Creation date and Action columns not sortable
-                { orderable: true, targets: [1] }       // Full name column sortable
+                { orderable: true, targets: [0] },      // Full name column sortable
+                { orderable: false, targets: [1, 2] }   // Status and Action columns not sortable
             ],
-            'order': [[1, 'asc']], // Sort by full name by default
+            'order': [[0, 'asc']], // Sort by full name by default
             'ajax': {
                 url: datatableUrl('/available-users.json'),
                 dataSrc: 'data',
