@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
 
     // DataTable routes
     Route::get('/datatable/available-users.json', [MonitoredUserController::class, 'datatable'])->name('monitored-users.datatable');
+    Route::get('/datatable/monitored-users.json', [MonitoredUserController::class, 'monitoredDatatable'])->name('monitored-users.monitored-datatable');
 });
 
 require __DIR__.'/auth.php';

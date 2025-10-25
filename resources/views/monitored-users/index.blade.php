@@ -115,40 +115,26 @@
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h2>Currently Monitored Users</h2>
+                        <div class="panel-ctrls">
+                            <!-- DataTable controls will be inserted here -->
+                        </div>
                     </div>
                     <div class="panel-body">
-                        @if($monitoredUsers->isEmpty())
-                            <p class="text-muted">No users are currently being monitored. Add users from the available list.</p>
-                        @else
-                            <div id="monitored-users-list">
-                                @foreach($monitoredUsers as $user)
-                                    <div class="user-card monitored {{ $user->is_active ? '' : 'inactive' }}" data-user-id="{{ $user->id }}">
-                                        <div class="user-info">
-                                            @if($user->avatar_url)
-                                                <img src="{{ $user->avatar_url }}" alt="{{ $user->display_name }}" class="user-avatar">
-                                            @else
-                                                <img src="{{ asset('template/assets/demo/avatar/avatar_15.png') }}" alt="{{ $user->display_name }}" class="user-avatar">
-                                            @endif
-                                            <div class="user-details">
-                                                <h4>{{ $user->display_name }}</h4>
-                                                <p>{{ $user->email }}</p>
-                                            </div>
-                                        </div>
-                                        <div class="user-actions">
-                                            <span class="badge-status {{ $user->is_active ? 'badge-active' : 'badge-inactive' }}">
-                                                {{ $user->is_active ? 'Active' : 'Inactive' }}
-                                            </span>
-                                            <button class="btn btn-sm btn-warning toggle-status" data-id="{{ $user->id }}">
-                                                <i class="fa fa-power-off"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger remove-user" data-id="{{ $user->id }}">
-                                                <i class="fa fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
+                        <table id="monitored-users-table" class="table table-striped table-bordered" cellspacing="0" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Full Name</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data loaded dynamically via DataTables -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="panel-footer">
+                        <!-- Pagination will be inserted here -->
                     </div>
                 </div>
             </div>
@@ -194,7 +180,29 @@
         const connectionId = {{ $activeConnection->id }};
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-        // Initialize DataTable for available users
+        // Initialize DataTable for monitored users (left panel)
+        var monitoredUsersTable = makeTable('#monitored-users-table', {
+            'language': {
+                'lengthMenu': '_MENU_'
+            },
+            'processing': true,
+            'serverSide': true,
+            'stateSave': false,
+            'columnDefs': [
+                { orderable: true, targets: [0] },      // Full name column sortable
+                { orderable: false, targets: [1, 2] }   // Status and Actions columns not sortable
+            ],
+            'order': [[0, 'asc']], // Sort by full name by default
+            'ajax': {
+                url: datatableUrl('/monitored-users.json'),
+                dataSrc: 'data',
+                data: function (d) {
+                    d.connection_id = connectionId;
+                }
+            }
+        });
+
+        // Initialize DataTable for available users (right panel)
         var availableUsersTable = makeTable('#available-users-table', {
             'language': {
                 'lengthMenu': '_MENU_'
@@ -237,7 +245,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload(); // Reload to update both lists
+                        // Reload both datatables
+                        monitoredUsersTable.ajax.reload();
+                        availableUsersTable.ajax.reload();
                     }
                 },
                 error: function() {
@@ -254,7 +264,6 @@
             }
 
             const userId = $(this).data('id');
-            const card = $(this).closest('.user-card');
 
             $.ajax({
                 url: '/monitored-users/' + userId,
@@ -264,12 +273,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        card.fadeOut(300, function() {
-                            $(this).remove();
-                            if ($('#monitored-users-list .user-card').length === 0) {
-                                $('#monitored-users-list').html('<p class="text-muted">No users are currently being monitored.</p>');
-                            }
-                        });
+                        // Reload both datatables
+                        monitoredUsersTable.ajax.reload();
+                        availableUsersTable.ajax.reload();
                     }
                 },
                 error: function() {
@@ -281,7 +287,6 @@
         // Toggle user status
         $(document).on('click', '.toggle-status', function() {
             const userId = $(this).data('id');
-            const card = $(this).closest('.user-card');
 
             $.ajax({
                 url: '/monitored-users/' + userId + '/toggle',
@@ -291,7 +296,8 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        // Reload monitored users datatable to reflect status change
+                        monitoredUsersTable.ajax.reload();
                     }
                 },
                 error: function() {

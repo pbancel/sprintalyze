@@ -26,7 +26,7 @@ class MonitoredUserController extends Controller
         $user = Auth::user();
 
         // Get the user's Jira connections
-        $connections = $user->jiraConnections()->with('monitoredUsers')->get();
+        $connections = $user->jiraConnections()->get();
 
         // Get the first connection by default (you can add UI to switch between connections later)
         $activeConnection = $connections->first();
@@ -36,10 +36,7 @@ class MonitoredUserController extends Controller
                 ->with('error', 'Please connect to Jira first.');
         }
 
-        // Get monitored users for the active connection
-        $monitoredUsers = $activeConnection->monitoredUsers;
-
-        return view('monitored-users.index', compact('connections', 'activeConnection', 'monitoredUsers'));
+        return view('monitored-users.index', compact('connections', 'activeConnection'));
     }
 
     /**
@@ -205,13 +202,15 @@ class MonitoredUserController extends Controller
             ->pluck('jira_account_id')
             ->toArray();
 
-        // Filter and transform users
+        // Filter and transform users - only show users not already monitored
         $users = collect($result['data'])
             ->filter(function ($user) use ($monitoredAccountIds) {
-                // Only show active users that are not already monitored
+                // Show all active users that are not already monitored
                 return ($user['active'] ?? true) && !in_array($user['accountId'], $monitoredAccountIds);
             })
             ->values();
+
+        $totalRecords = $users->count();
 
         // Apply search filter if provided
         $searchValue = $request->input('search.value', '');
@@ -223,7 +222,7 @@ class MonitoredUserController extends Controller
             })->values();
         }
 
-        $totalRecords = $users->count();
+        $filteredRecords = $users->count();
 
         // Apply sorting
         if ($request->has('order')) {
@@ -295,7 +294,115 @@ class MonitoredUserController extends Controller
         return response()->json([
             'draw' => intval($request->input('draw', 0)),
             'recordsTotal' => $totalRecords,
-            'recordsFiltered' => $totalRecords, // Same as total since filtering is done in memory
+            'recordsFiltered' => $filteredRecords,
+            'data' => $data
+        ]);
+    }
+
+    /**
+     * DataTable endpoint for monitored users
+     */
+    public function monitoredDatatable(Request $request)
+    {
+        $connectionId = $request->input('connection_id');
+
+        // Verify the connection belongs to the authenticated user
+        $connection = JiraConnection::where('user_id', Auth::id())
+            ->where('id', $connectionId)
+            ->firstOrFail();
+
+        // Build query for monitored users
+        $query = MonitoredUser::where('jira_connection_id', $connectionId);
+
+        // Apply search filter if provided
+        $searchValue = $request->input('search.value', '');
+        if (!empty($searchValue)) {
+            $query->where(function ($q) use ($searchValue) {
+                $q->where('display_name', 'LIKE', '%' . $searchValue . '%')
+                  ->orWhere('email', 'LIKE', '%' . $searchValue . '%');
+            });
+        }
+
+        // Get total and filtered counts
+        $totalRecords = MonitoredUser::where('jira_connection_id', $connectionId)->count();
+        $filteredRecords = $query->count();
+
+        // Apply sorting
+        if ($request->has('order')) {
+            $orderColumnIndex = $request->input('order.0.column', 0);
+            $orderDir = $request->input('order.0.dir', 'asc');
+
+            // Map column indexes to database fields
+            $columnMap = [
+                0 => 'display_name',  // Full name
+                1 => 'is_active',     // Status
+                2 => null             // Actions (not sortable)
+            ];
+
+            if (isset($columnMap[$orderColumnIndex]) && $columnMap[$orderColumnIndex] !== null) {
+                $query->orderBy($columnMap[$orderColumnIndex], $orderDir);
+            }
+        } else {
+            // Default sorting
+            $query->orderBy('display_name', 'asc');
+        }
+
+        // Apply pagination
+        if ($request->has('start') && $request->has('length')) {
+            $query->offset($request->input('start'))
+                  ->limit($request->input('length'));
+        }
+
+        $monitoredUsers = $query->get();
+
+        // Transform data for DataTable
+        $data = [];
+        foreach ($monitoredUsers as $user) {
+            $avatarUrl = $user->avatar_url ?? '';
+            $displayName = htmlspecialchars($user->display_name);
+            $email = htmlspecialchars($user->email ?? 'N/A');
+            $userId = $user->id;
+            $isActive = $user->is_active;
+
+            // Format full name with email and avatar
+            $fullName = '<div class="user-info-cell">' .
+                       ($avatarUrl ? '<img src="' . $avatarUrl . '" class="user-avatar-small" alt="' . $displayName . '">' : '') .
+                       '<div class="user-details-cell">' .
+                       '<strong>' . $displayName . '</strong><br>' .
+                       '<small class="text-muted">' . $email . '</small>' .
+                       '</div></div>';
+
+            // Status badge with toggle button
+            $statusBadge = '<div class="status-cell">' .
+                          ($isActive
+                              ? '<span class="badge-status badge-active">Active</span>'
+                              : '<span class="badge-status badge-inactive">Inactive</span>') .
+                          '</div>';
+
+            // Action buttons
+            $actionButtons = '<div class="btn-group">' .
+                           '<button class="btn btn-sm btn-warning toggle-status" data-id="' . $userId . '" title="Toggle Status">' .
+                           '<i class="fa fa-power-off"></i>' .
+                           '</button>' .
+                           '<button class="btn btn-sm btn-danger remove-user" data-id="' . $userId . '" title="Remove User">' .
+                           '<i class="fa fa-trash"></i>' .
+                           '</button>' .
+                           '</div>';
+
+            $row = [
+                $fullName,
+                $statusBadge,
+                $actionButtons
+            ];
+
+            $data[] = $row;
+        }
+
+        // Return standard DataTable JSON response
+        return response()->json([
+            'draw' => intval($request->input('draw', 0)),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $filteredRecords,
             'data' => $data
         ]);
     }
