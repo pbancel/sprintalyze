@@ -5,11 +5,15 @@ use App\Http\Controllers\JiraController;
 use App\Http\Controllers\MonitoredUserController;
 use App\Http\Controllers\ManageInstancesController;
 use App\Http\Controllers\ManageIssuesController;
+use App\Http\Controllers\JiraWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Jira Webhook endpoint (no auth required - Jira will call this)
+Route::post('/webhooks/jira', [JiraWebhookController::class, 'handle'])->name('webhooks.jira');
 
 // Guest Jira OAuth routes (for login/registration)
 Route::get('/jira/authorize', [JiraController::class, 'authorize'])->name('jira.authorize');
