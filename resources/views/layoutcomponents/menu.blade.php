@@ -24,16 +24,16 @@
                                 <span>Dashboard</span>
                             </a>
                         </li>
-                        <li class="{{ request()->routeIs('monitored-users.*') ? 'active' : '' }}">
-                            <a class="withripple" href="{{ route('monitored-users.index') }}">
-                                <span class="icon"><i class="material-icons">people</i></span>
-                                <span>Manage Users</span>
-                            </a>
-                        </li>
                         <li class="{{ request()->routeIs('manage-instances.*') ? 'active' : '' }}">
                             <a class="withripple" href="{{ route('manage-instances.index') }}">
                                 <span class="icon"><i class="material-icons">dns</i></span>
                                 <span>Manage Instances</span>
+                            </a>
+                        </li>
+                        <li class="{{ request()->routeIs('monitored-users.*') ? 'active' : '' }}">
+                            <a class="withripple" href="{{ route('monitored-users.index') }}">
+                                <span class="icon"><i class="material-icons">people</i></span>
+                                <span>Manage Users</span>
                             </a>
                         </li>
                     </ul>
