@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\JiraController;
 use App\Http\Controllers\MonitoredUserController;
 use App\Http\Controllers\ManageInstancesController;
+use App\Http\Controllers\ManageIssuesController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -51,6 +52,9 @@ Route::middleware('auth')->group(function () {
     // DataTable routes for instances
     Route::get('/datatable/available-instances.json', [ManageInstancesController::class, 'availableDatatable'])->name('manage-instances.available-datatable');
     Route::get('/datatable/monitored-instances.json', [ManageInstancesController::class, 'monitoredDatatable'])->name('manage-instances.monitored-datatable');
+
+    // Manage Issues routes
+    Route::get('/manage/issues', [ManageIssuesController::class, 'index'])->name('manage-issues.index');
 });
 
 require __DIR__.'/auth.php';

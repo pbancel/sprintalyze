@@ -36,6 +36,12 @@
                                 <span>Manage Users</span>
                             </a>
                         </li>
+                        <li class="{{ request()->routeIs('manage-issues.*') ? 'active' : '' }}">
+                            <a class="withripple" href="{{ route('manage-issues.index') }}">
+                                <span class="icon"><i class="material-icons">assignment</i></span>
+                                <span>Manage Issues</span>
+                            </a>
+                        </li>
                     </ul>
                 </nav>
             </div>
