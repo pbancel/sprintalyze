@@ -188,10 +188,34 @@
 
     <script>
     $(document).ready(function() {
+        const connectionId = {{ $activeConnection->id }};
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-        // DataTables will be initialized here later
-        console.log('Manage Issues page loaded');
+        // Initialize DataTable for available issues (right panel)
+        var availableIssuesTable = makeTable('#available-issues-table', {
+            'language': {
+                'lengthMenu': '_MENU_'
+            },
+            'processing': true,
+            'serverSide': true, // Server-side processing
+            'stateSave': false,
+            'columnDefs': [
+                { orderable: true, targets: [0, 1] },   // Issue Key and Summary sortable
+                { orderable: false, targets: [2] }      // Action not sortable
+            ],
+            'order': [[0, 'asc']], // Sort by issue key by default
+            'ajax': {
+                url: datatableUrl('/available-issues.json'),
+                dataSrc: 'data',
+                data: function (d) {
+                    d.connection_id = connectionId;
+                },
+                error: function(xhr, error, code) {
+                    console.error('DataTable error:', xhr.responseText);
+                    alert('Failed to load issues: ' + (xhr.responseJSON?.error || error));
+                }
+            }
+        });
     });
     </script>
     @endpush

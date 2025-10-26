@@ -55,6 +55,9 @@ Route::middleware('auth')->group(function () {
 
     // Manage Issues routes
     Route::get('/manage/issues', [ManageIssuesController::class, 'index'])->name('manage-issues.index');
+
+    // DataTable route for available issues
+    Route::get('/datatable/available-issues.json', [ManageIssuesController::class, 'availableDatatable'])->name('manage-issues.available-datatable');
 });
 
 require __DIR__.'/auth.php';

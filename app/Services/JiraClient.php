@@ -161,11 +161,12 @@ class JiraClient
     public function searchIssues(string $jql, int $maxResults = 50, int $startAt = 0): array
     {
         try {
-            $response = $this->client()->post('/rest/api/3/search', [
+            // Use GET with query parameters for the new API endpoint
+            $response = $this->client()->get('/rest/api/3/search/jql', [
                 'jql' => $jql,
                 'maxResults' => $maxResults,
                 'startAt' => $startAt,
-                'fields' => ['summary', 'status', 'assignee', 'created', 'updated']
+                'fields' => 'summary,status,assignee,issuetype,created,updated'
             ]);
 
             if ($response->successful()) {
@@ -175,13 +176,20 @@ class JiraClient
                 ];
             }
 
+            Log::error('Jira search failed with status: ' . $response->status(), [
+                'response_body' => $response->body(),
+                'jql' => $jql
+            ]);
+
             return [
                 'success' => false,
-                'message' => 'Search failed',
+                'message' => 'Search failed: ' . $response->status() . ' - ' . ($response->json()['errorMessages'][0] ?? 'Unknown error'),
                 'data' => null
             ];
         } catch (\Exception $e) {
-            Log::error('Jira search failed: ' . $e->getMessage());
+            Log::error('Jira search exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return [
                 'success' => false,
