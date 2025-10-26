@@ -279,6 +279,55 @@
                 }
             });
         });
+
+        // Remove instance from monitoring
+        $(document).on('click', '.remove-instance', function() {
+            if (!confirm('Are you sure you want to stop monitoring this instance?')) {
+                return;
+            }
+
+            const instanceId = $(this).data('id');
+
+            $.ajax({
+                url: '/manage/instances/' + instanceId,
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Reload both datatables
+                        monitoredInstancesTable.ajax.reload();
+                        availableInstancesTable.ajax.reload();
+                    }
+                },
+                error: function() {
+                    alert('Failed to remove instance. Please try again.');
+                }
+            });
+        });
+
+        // Toggle instance status
+        $(document).on('click', '.toggle-instance-status', function() {
+            const instanceId = $(this).data('id');
+
+            $.ajax({
+                url: '/manage/instances/' + instanceId + '/toggle',
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Reload monitored instances datatable to reflect status change
+                        monitoredInstancesTable.ajax.reload();
+                    }
+                },
+                error: function() {
+                    alert('Failed to update instance status. Please try again.');
+                }
+            });
+        });
     });
     </script>
     @endpush

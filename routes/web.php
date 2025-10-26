@@ -45,6 +45,8 @@ Route::middleware('auth')->group(function () {
     // Manage Instances routes
     Route::get('/manage/instances', [ManageInstancesController::class, 'index'])->name('manage-instances.index');
     Route::post('/manage/instances', [ManageInstancesController::class, 'store'])->name('manage-instances.store');
+    Route::delete('/manage/instances/{id}', [ManageInstancesController::class, 'destroy'])->name('manage-instances.destroy');
+    Route::patch('/manage/instances/{id}/toggle', [ManageInstancesController::class, 'toggleStatus'])->name('manage-instances.toggle');
 
     // DataTable routes for instances
     Route::get('/datatable/available-instances.json', [ManageInstancesController::class, 'availableDatatable'])->name('manage-instances.available-datatable');

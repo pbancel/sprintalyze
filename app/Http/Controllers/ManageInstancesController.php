@@ -324,4 +324,57 @@ class ManageInstancesController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Remove an instance from monitoring
+     */
+    public function destroy(Request $request, int $id)
+    {
+        try {
+            $jiraInstance = JiraInstance::where('user_id', Auth::id())
+                ->findOrFail($id);
+
+            $jiraInstance->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Instance removed from monitoring successfully',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to remove monitored instance: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove instance: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle instance monitoring status
+     */
+    public function toggleStatus(Request $request, int $id)
+    {
+        try {
+            $jiraInstance = JiraInstance::where('user_id', Auth::id())
+                ->findOrFail($id);
+
+            $jiraInstance->update([
+                'is_active' => !$jiraInstance->is_active,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Instance monitoring status updated',
+                'is_active' => $jiraInstance->is_active,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to toggle instance status: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update status: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
