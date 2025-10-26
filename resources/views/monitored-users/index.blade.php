@@ -1,4 +1,4 @@
-<x-member-layout title="Monitored Users - Sprintalyze">
+<x-member-layout title="Manage Users - Sprintalyze">
     @push('styles')
     <style>
         .user-card {
@@ -90,10 +90,10 @@
 
     <ol class="breadcrumb">
         <li><a href="{{ url('/dashboard') }}">Home</a></li>
-        <li class="active"><a href="{{ route('monitored-users.index') }}">Monitored Users</a></li>
+        <li class="active"><a href="{{ route('monitored-users.index') }}">Manage Users</a></li>
     </ol>
     <div class="page-heading">
-        <h1>Monitored Users<small>Manage users to track activity</small></h1>
+        <h1>Manage Users<small>Manage users to track activity</small></h1>
     </div>
     <div class="container-fluid">
         @if(session('success'))

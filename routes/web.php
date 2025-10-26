@@ -31,12 +31,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/jira/board/{boardId}/sprints', [JiraController::class, 'getBoardSprints'])->name('jira.board.sprints');
     Route::get('/jira/sprint/{sprintId}/issues', [JiraController::class, 'getSprintIssues'])->name('jira.sprint.issues');
 
-    // Monitored Users routes
-    Route::get('/monitored-users', [MonitoredUserController::class, 'index'])->name('monitored-users.index');
-    Route::post('/monitored-users/fetch', [MonitoredUserController::class, 'fetchUsers'])->name('monitored-users.fetch');
-    Route::post('/monitored-users', [MonitoredUserController::class, 'store'])->name('monitored-users.store');
-    Route::delete('/monitored-users/{id}', [MonitoredUserController::class, 'destroy'])->name('monitored-users.destroy');
-    Route::patch('/monitored-users/{id}/toggle', [MonitoredUserController::class, 'toggleStatus'])->name('monitored-users.toggle');
+    // Manage Users routes
+    Route::get('/manage/users', [MonitoredUserController::class, 'index'])->name('monitored-users.index');
+    Route::post('/manage/users/fetch', [MonitoredUserController::class, 'fetchUsers'])->name('monitored-users.fetch');
+    Route::post('/manage/users', [MonitoredUserController::class, 'store'])->name('monitored-users.store');
+    Route::delete('/manage/users/{id}', [MonitoredUserController::class, 'destroy'])->name('monitored-users.destroy');
+    Route::patch('/manage/users/{id}/toggle', [MonitoredUserController::class, 'toggleStatus'])->name('monitored-users.toggle');
 
     // DataTable routes
     Route::get('/datatable/available-users.json', [MonitoredUserController::class, 'datatable'])->name('monitored-users.datatable');

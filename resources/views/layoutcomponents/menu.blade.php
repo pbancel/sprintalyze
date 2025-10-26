@@ -27,7 +27,7 @@
                         <li class="{{ request()->routeIs('monitored-users.*') ? 'active' : '' }}">
                             <a class="withripple" href="{{ route('monitored-users.index') }}">
                                 <span class="icon"><i class="material-icons">people</i></span>
-                                <span>Monitored Users</span>
+                                <span>Manage Users</span>
                             </a>
                         </li>
                         <li class="{{ request()->routeIs('manage-instances.*') ? 'active' : '' }}">
