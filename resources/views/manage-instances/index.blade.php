@@ -190,8 +190,24 @@
     $(document).ready(function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-        // DataTables will be initialized here later
-        console.log('Manage Instances page loaded');
+        // Initialize DataTable for available instances (right panel)
+        var availableInstancesTable = makeTable('#available-instances-table', {
+            'language': {
+                'lengthMenu': '_MENU_'
+            },
+            'processing': true,
+            'serverSide': true,
+            'stateSave': false,
+            'columnDefs': [
+                { orderable: true, targets: [0, 1] },   // Instance Name and URL sortable
+                { orderable: false, targets: [2] }      // Action not sortable
+            ],
+            'order': [[0, 'asc']], // Sort by instance name by default
+            'ajax': {
+                url: datatableUrl('/available-instances.json'),
+                dataSrc: 'data'
+            }
+        });
     });
     </script>
     @endpush

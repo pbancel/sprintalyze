@@ -44,6 +44,9 @@ Route::middleware('auth')->group(function () {
 
     // Manage Instances routes
     Route::get('/manage/instances', [ManageInstancesController::class, 'index'])->name('manage-instances.index');
+
+    // DataTable route for available instances
+    Route::get('/datatable/available-instances.json', [ManageInstancesController::class, 'availableDatatable'])->name('manage-instances.available-datatable');
 });
 
 require __DIR__.'/auth.php';
