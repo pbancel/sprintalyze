@@ -191,6 +191,28 @@
         const connectionId = {{ $activeConnection->id }};
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
+        // Initialize DataTable for monitored issues (left panel)
+        var monitoredIssuesTable = makeTable('#monitored-issues-table', {
+            'language': {
+                'lengthMenu': '_MENU_'
+            },
+            'processing': true,
+            'serverSide': true,
+            'stateSave': false,
+            'columnDefs': [
+                { orderable: true, targets: [0] },      // Issue Key sortable
+                { orderable: false, targets: [1, 2] }   // Status and Actions not sortable
+            ],
+            'order': [[0, 'asc']], // Sort by issue key by default
+            'ajax': {
+                url: datatableUrl('/monitored-issues.json'),
+                dataSrc: 'data',
+                data: function (d) {
+                    d.connection_id = connectionId;
+                }
+            }
+        });
+
         // Initialize DataTable for available issues (right panel)
         var availableIssuesTable = makeTable('#available-issues-table', {
             'language': {
@@ -215,6 +237,111 @@
                     alert('Failed to load issues: ' + (xhr.responseJSON?.error || error));
                 }
             }
+        });
+
+        // Add issue to monitoring (using event delegation for dynamically created buttons)
+        $(document).on('click', '.add-issue-btn', function() {
+            const btn = $(this);
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+            $.ajax({
+                url: '{{ route("manage-issues.store") }}',
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                data: {
+                    connection_id: connectionId,
+                    issue_id: btn.data('issue-id'),
+                    issue_key: btn.data('issue-key'),
+                    summary: btn.data('summary'),
+                    status: btn.data('status'),
+                    issue_type: btn.data('issue-type'),
+                    assignee_id: btn.data('assignee-id'),
+                    assignee_name: btn.data('assignee-name')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Reload both datatables
+                        monitoredIssuesTable.ajax.reload();
+                        availableIssuesTable.ajax.reload();
+                    } else {
+                        alert('Failed to add issue: ' + (response.message || 'Unknown error'));
+                        btn.prop('disabled', false).html(originalHtml);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    let errorMessage = 'Failed to add issue. Please try again.';
+
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        // Laravel validation errors
+                        errorMessage = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                    } else if (xhr.responseText) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMessage = response.message || errorMessage;
+                        } catch(e) {
+                            // Not JSON, use default message
+                        }
+                    }
+
+                    console.error('Add issue error:', xhr.responseText);
+                    alert(errorMessage);
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        });
+
+        // Remove issue from monitoring
+        $(document).on('click', '.remove-issue', function() {
+            if (!confirm('Are you sure you want to stop monitoring this issue?')) {
+                return;
+            }
+
+            const issueId = $(this).data('id');
+
+            $.ajax({
+                url: '/manage/issues/' + issueId,
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Reload both datatables
+                        monitoredIssuesTable.ajax.reload();
+                        availableIssuesTable.ajax.reload();
+                    }
+                },
+                error: function() {
+                    alert('Failed to remove issue. Please try again.');
+                }
+            });
+        });
+
+        // Toggle issue status
+        $(document).on('click', '.toggle-issue-status', function() {
+            const issueId = $(this).data('id');
+
+            $.ajax({
+                url: '/manage/issues/' + issueId + '/toggle',
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Reload monitored issues datatable to reflect status change
+                        monitoredIssuesTable.ajax.reload();
+                    }
+                },
+                error: function() {
+                    alert('Failed to update issue status. Please try again.');
+                }
+            });
         });
     });
     </script>

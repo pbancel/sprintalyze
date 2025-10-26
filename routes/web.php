@@ -55,9 +55,13 @@ Route::middleware('auth')->group(function () {
 
     // Manage Issues routes
     Route::get('/manage/issues', [ManageIssuesController::class, 'index'])->name('manage-issues.index');
+    Route::post('/manage/issues', [ManageIssuesController::class, 'store'])->name('manage-issues.store');
+    Route::delete('/manage/issues/{id}', [ManageIssuesController::class, 'destroy'])->name('manage-issues.destroy');
+    Route::patch('/manage/issues/{id}/toggle', [ManageIssuesController::class, 'toggleStatus'])->name('manage-issues.toggle');
 
-    // DataTable route for available issues
+    // DataTable routes for issues
     Route::get('/datatable/available-issues.json', [ManageIssuesController::class, 'availableDatatable'])->name('manage-issues.available-datatable');
+    Route::get('/datatable/monitored-issues.json', [ManageIssuesController::class, 'monitoredDatatable'])->name('manage-issues.monitored-datatable');
 });
 
 require __DIR__.'/auth.php';
