@@ -190,6 +190,25 @@
     $(document).ready(function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
+        // Initialize DataTable for monitored instances (left panel)
+        var monitoredInstancesTable = makeTable('#monitored-instances-table', {
+            'language': {
+                'lengthMenu': '_MENU_'
+            },
+            'processing': true,
+            'serverSide': true,
+            'stateSave': false,
+            'columnDefs': [
+                { orderable: true, targets: [0] },      // Instance Name sortable
+                { orderable: false, targets: [1, 2] }   // Status and Actions not sortable
+            ],
+            'order': [[0, 'asc']], // Sort by instance name by default
+            'ajax': {
+                url: datatableUrl('/monitored-instances.json'),
+                dataSrc: 'data'
+            }
+        });
+
         // Initialize DataTable for available instances (right panel)
         var availableInstancesTable = makeTable('#available-instances-table', {
             'language': {
@@ -207,6 +226,58 @@
                 url: datatableUrl('/available-instances.json'),
                 dataSrc: 'data'
             }
+        });
+
+        // Add instance to monitoring (using event delegation for dynamically created buttons)
+        $(document).on('click', '.add-instance-btn', function() {
+            const btn = $(this);
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+            $.ajax({
+                url: '{{ route("manage-instances.store") }}',
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                data: {
+                    jira_connection_id: btn.data('instance-id'),
+                    cloud_id: btn.data('cloud-id'),
+                    site_name: btn.data('instance-name'),
+                    site_url: btn.data('site-url')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Reload both datatables
+                        monitoredInstancesTable.ajax.reload();
+                        availableInstancesTable.ajax.reload();
+                    } else {
+                        alert('Failed to add instance: ' + (response.message || 'Unknown error'));
+                        btn.prop('disabled', false).html(originalHtml);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    let errorMessage = 'Failed to add instance. Please try again.';
+
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        // Laravel validation errors
+                        errorMessage = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                    } else if (xhr.responseText) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMessage = response.message || errorMessage;
+                        } catch(e) {
+                            // Not JSON, use default message
+                        }
+                    }
+
+                    console.error('Add instance error:', xhr.responseText);
+                    alert(errorMessage);
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
         });
     });
     </script>
