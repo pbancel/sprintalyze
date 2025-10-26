@@ -30,6 +30,12 @@
                                 <span>Monitored Users</span>
                             </a>
                         </li>
+                        <li class="{{ request()->routeIs('manage-instances.*') ? 'active' : '' }}">
+                            <a class="withripple" href="{{ route('manage-instances.index') }}">
+                                <span class="icon"><i class="material-icons">dns</i></span>
+                                <span>Manage Instances</span>
+                            </a>
+                        </li>
                     </ul>
                 </nav>
             </div>
