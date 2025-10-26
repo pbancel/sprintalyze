@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\JiraController;
 use App\Http\Controllers\MonitoredUserController;
+use App\Http\Controllers\ManageInstancesController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -40,6 +41,9 @@ Route::middleware('auth')->group(function () {
     // DataTable routes
     Route::get('/datatable/available-users.json', [MonitoredUserController::class, 'datatable'])->name('monitored-users.datatable');
     Route::get('/datatable/monitored-users.json', [MonitoredUserController::class, 'monitoredDatatable'])->name('monitored-users.monitored-datatable');
+
+    // Manage Instances routes
+    Route::get('/manage/instances', [ManageInstancesController::class, 'index'])->name('manage-instances.index');
 });
 
 require __DIR__.'/auth.php';
