@@ -5,7 +5,9 @@
 <meta name="apple-touch-fullscreen" content="yes">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
+<link rel="icon" type="image/png" href="{{ asset('template/assets/img/logo-icon-dark.png') }}">
 <link rel="shortcut icon" href="{{ asset('template/assets/img/logo-icon-dark.png') }}">
+<link rel="apple-touch-icon" href="{{ asset('template/assets/img/logo-icon-dark.png') }}">
 
 <link type='text/css' href='http://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500' rel='stylesheet'>
 <link type='text/css'  href="https://fonts.googleapis.com/icon?family=Material+Icons"  rel="stylesheet">
