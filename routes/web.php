@@ -6,6 +6,7 @@ use App\Http\Controllers\MonitoredUserController;
 use App\Http\Controllers\ManageInstancesController;
 use App\Http\Controllers\ManageIssuesController;
 use App\Http\Controllers\JiraWebhookController;
+use App\Http\Controllers\TokenController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -18,6 +19,9 @@ Route::post('/webhooks/jira', [JiraWebhookController::class, 'handle'])->name('w
 // Guest Jira OAuth routes (for login/registration)
 Route::get('/jira/authorize', [JiraController::class, 'authorize'])->name('jira.authorize');
 Route::get('/jira/callback', [JiraController::class, 'callback'])->name('jira.callback');
+
+// Token transfer endpoint (for development - transfer tokens from preproduction to local)
+Route::get('/tokens/obtain', [TokenController::class, 'obtain'])->name('tokens.obtain');
 
 Route::get('/dashboard', function () {
     return view('dashboard');
